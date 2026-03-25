@@ -4,13 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerticesTable } from './VerticesTable';
-import { MemorialData, Vertice } from '@/types/documents';
+import { ConjugeFields } from './ConjugeFields';
+import { MemorialData, Vertice, emptyConjuge } from '@/types/documents';
 import { generateMemorialDocx } from '@/utils/generateMemorial';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const initialData: MemorialData = {
   nomeProprietario: '', cpfProprietario: '', rgProprietario: '',
+  estadoCivil: 'solteiro(a)',
+  conjuge: { ...emptyConjuge },
   denominacaoImovel: '', municipio: '', uf: 'PR', matricula: '', registro: '',
   codigoIncra: '', areaTotal: '', perimetroTotal: '',
   vertices: [],
@@ -33,8 +36,16 @@ function Field({ label, value, onChange, className, placeholder }: {
 export function MemorialForm() {
   const [data, setData] = useState<MemorialData>(initialData);
 
-  const update = (field: keyof MemorialData, value: string | Vertice[]) => {
+  const update = (field: keyof MemorialData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEstadoCivilChange = (value: string) => {
+    update('estadoCivil', value);
+    const isCasado = value.toLowerCase().includes('casado') || value.toLowerCase().includes('união estável');
+    if (!isCasado) {
+      update('conjuge', { ...emptyConjuge });
+    }
   };
 
   const handleGenerate = async () => {
@@ -58,6 +69,13 @@ export function MemorialForm() {
           <Field label="Nome completo" value={data.nomeProprietario} onChange={v => update('nomeProprietario', v)} className="md:col-span-2" />
           <Field label="CPF" value={data.cpfProprietario} onChange={v => update('cpfProprietario', v)} />
           <Field label="RG (opcional)" value={data.rgProprietario} onChange={v => update('rgProprietario', v)} />
+          
+          <ConjugeFields
+            estadoCivil={data.estadoCivil}
+            conjuge={data.conjuge}
+            onEstadoCivilChange={handleEstadoCivilChange}
+            onConjugeChange={c => update('conjuge', c)}
+          />
         </CardContent>
       </Card>
 

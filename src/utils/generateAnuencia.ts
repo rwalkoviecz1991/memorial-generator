@@ -1,12 +1,36 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType, HeadingLevel
+  AlignmentType, BorderStyle, WidthType, ShadingType
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { AnuenciaData } from '@/types/documents';
+import { AnuenciaData, ConjugeData } from '@/types/documents';
 
 const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
 const cellBorders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+
+function buildConjugeText(conjuge: ConjugeData, estadoCivil: string): TextRun[] {
+  const isCasado = estadoCivil.toLowerCase().includes('casado') || estadoCivil.toLowerCase().includes('união estável');
+  if (!isCasado || !conjuge.nome) return [];
+
+  const parts: string[] = [];
+  parts.push(`, casado(a) com `);
+  
+  const docParts: string[] = [];
+  if (conjuge.nacionalidade) docParts.push(conjuge.nacionalidade);
+  if (conjuge.profissao) docParts.push(conjuge.profissao);
+  
+  const idParts: string[] = [];
+  if (conjuge.rg) idParts.push(`portador(a) da C.I.RG n° ${conjuge.rg} ${conjuge.orgaoRg}`);
+  if (conjuge.cnh) idParts.push(`da CNH n° ${conjuge.cnh} ${conjuge.orgaoCnh}`);
+  if (conjuge.cpf) idParts.push(`inscrito(a) no CPF n° ${conjuge.cpf}`);
+
+  return [
+    new TextRun({ text: `, casado(a) com ` }),
+    new TextRun({ text: conjuge.nome, bold: true }),
+    new TextRun({ text: docParts.length ? `, ${docParts.join(', ')}` : '' }),
+    new TextRun({ text: idParts.length ? `, ${idParts.join(', ')}` : '' }),
+  ];
+}
 
 export async function generateAnuenciaDocx(data: AnuenciaData) {
   const headerBg = "1B5E20";
@@ -25,12 +49,12 @@ export async function generateAnuenciaDocx(data: AnuenciaData) {
     })
   );
 
+  const conjugeRuns = buildConjugeText(data.conjuge, data.estadoCivil);
+
   const doc = new Document({
     styles: {
       default: {
-        document: {
-          run: { font: "Arial", size: 22 },
-        },
+        document: { run: { font: "Arial", size: 22 } },
       },
     },
     sections: [
@@ -42,29 +66,25 @@ export async function generateAnuenciaDocx(data: AnuenciaData) {
           },
         },
         children: [
-          // Título
           new Paragraph({
             alignment: AlignmentType.CENTER,
             spacing: { after: 200 },
             children: [
-              new TextRun({
-                text: "DECLARAÇÃO DE ANUÊNCIA DE CONFRONTANTE",
-                bold: true,
-                size: 28,
-                font: "Arial",
-              }),
+              new TextRun({ text: "DECLARAÇÃO DE ANUÊNCIA DE CONFRONTANTE", bold: true, size: 28 }),
             ],
           }),
 
           new Paragraph({ spacing: { after: 200 }, children: [] }),
 
-          // Corpo do texto
           new Paragraph({
             alignment: AlignmentType.JUSTIFIED,
             spacing: { after: 200, line: 360 },
             children: [
               new TextRun({ text: data.nome, bold: true }),
-              new TextRun({ text: `, ${data.nacionalidade}, ${data.estadoCivil}, ${data.uniaoEstavel}, ${data.profissao}, portador da C.I.RG n° ` }),
+              new TextRun({ text: `, ${data.nacionalidade}, ${data.estadoCivil}` }),
+              ...conjugeRuns,
+              new TextRun({ text: data.uniaoEstavel ? `, ${data.uniaoEstavel}` : '' }),
+              new TextRun({ text: `, ${data.profissao}, portador da C.I.RG n° ` }),
               new TextRun({ text: `${data.rg} ${data.orgaoRg}` }),
               new TextRun({ text: data.cnh ? `, da Carteira Nacional de Habilitação n° ${data.cnh} ${data.orgaoCnh}` : '' }),
               new TextRun({ text: ` e inscrito no CPF n° ${data.cpf}` }),
@@ -83,32 +103,16 @@ export async function generateAnuenciaDocx(data: AnuenciaData) {
           new Paragraph({
             spacing: { before: 200, after: 200 },
             children: [
-              new TextRun({
-                text: "O trecho confrontante para o qual confiro minha anuência possui os seguintes elementos técnicos:",
-                bold: true,
-              }),
+              new TextRun({ text: "O trecho confrontante para o qual confiro minha anuência possui os seguintes elementos técnicos:", bold: true }),
             ],
           }),
 
-          // Tabela de vértices
           new Table({
             width: { size: 9560, type: WidthType.DXA },
             columnWidths: [1400, 1400, 1400, 960, 1400, 1000, 1000],
             rows: [
-              // Header row 1
-              new TableRow({
-                children: [
-                  createHeaderCell("Sistema Geodésico de Referência (SGR): SIRGAS2000", 9560, 7, headerBg),
-                ],
-              }),
-              // Header row 2
-              new TableRow({
-                children: [
-                  createHeaderCell("VÉRTICE ESTAÇÃO", 5160, 4, headerBg),
-                  createHeaderCell("VÉRTICE VANTE", 4400, 3, headerBg),
-                ],
-              }),
-              // Header row 3
+              new TableRow({ children: [createHeaderCell("Sistema Geodésico de Referência (SGR): SIRGAS2000", 9560, 7, headerBg)] }),
+              new TableRow({ children: [createHeaderCell("VÉRTICE ESTAÇÃO", 5160, 4, headerBg), createHeaderCell("VÉRTICE VANTE", 4400, 3, headerBg)] }),
               new TableRow({
                 children: [
                   createHeaderCell("Código (Vértice)", 1400, 1, headerBg),
@@ -126,24 +130,18 @@ export async function generateAnuenciaDocx(data: AnuenciaData) {
 
           new Paragraph({ spacing: { after: 400 }, children: [] }),
 
-          // Local e data
           new Paragraph({
             alignment: AlignmentType.LEFT,
             spacing: { after: 400 },
-            children: [
-              new TextRun({ text: `${data.localData}, ${data.dataDocumento}.` }),
-            ],
+            children: [new TextRun({ text: `${data.localData}, ${data.dataDocumento}.` })],
           }),
 
           new Paragraph({ spacing: { after: 200 }, children: [] }),
 
-          // Assinaturas
           new Paragraph({
             alignment: AlignmentType.LEFT,
             spacing: { after: 100 },
-            children: [
-              new TextRun({ text: "Confrontante:___________________________________________________________" }),
-            ],
+            children: [new TextRun({ text: "Confrontante:___________________________________________________________" })],
           }),
 
           new Paragraph({ spacing: { after: 300 }, children: [] }),
@@ -151,47 +149,16 @@ export async function generateAnuenciaDocx(data: AnuenciaData) {
           new Paragraph({
             alignment: AlignmentType.LEFT,
             spacing: { after: 100 },
-            children: [
-              new TextRun({ text: "Credenciado como testemunha:____________________________________________" }),
-            ],
+            children: [new TextRun({ text: "Credenciado como testemunha:____________________________________________" })],
           }),
 
           new Paragraph({ spacing: { after: 100 }, children: [] }),
 
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: data.nomeProfissional.toUpperCase(), bold: true, size: 20 }),
-            ],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: data.tipoProfissional?.toUpperCase() || "TÉCNICO EM AGRIMENSURA", size: 18 }),
-            ],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ text: `${data.tipoProfissional}: ${data.registroProfissional}`, size: 18 }),
-            ],
-          }),
-          ...(data.trt ? [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({ text: `TRT nº ${data.trt}`, size: 18 }),
-              ],
-            }),
-          ] : []),
-          ...(data.credenciamento ? [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({ text: `Credenciamento INCRA: ${data.credenciamento}`, size: 18 }),
-              ],
-            }),
-          ] : []),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.nomeProfissional.toUpperCase(), bold: true, size: 20 })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.tipoProfissional?.toUpperCase() || "TÉCNICO EM AGRIMENSURA", size: 18 })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${data.tipoProfissional}: ${data.registroProfissional}`, size: 18 })] }),
+          ...(data.trt ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `TRT nº ${data.trt}`, size: 18 })] })] : []),
+          ...(data.credenciamento ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Credenciamento INCRA: ${data.credenciamento}`, size: 18 })] })] : []),
         ],
       },
     ],
@@ -206,12 +173,7 @@ function createCell(text: string, width: number): TableCell {
     borders: cellBorders,
     width: { size: width, type: WidthType.DXA },
     margins: { top: 40, bottom: 40, left: 60, right: 60 },
-    children: [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: text || '', size: 18 })],
-      }),
-    ],
+    children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: text || '', size: 18 })] })],
   });
 }
 
@@ -222,11 +184,6 @@ function createHeaderCell(text: string, width: number, columnSpan: number, bgCol
     columnSpan,
     shading: { fill: bgColor, type: ShadingType.CLEAR },
     margins: { top: 40, bottom: 40, left: 60, right: 60 },
-    children: [
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text, bold: true, size: 18, color: "FFFFFF", font: "Arial" })],
-      }),
-    ],
+    children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text, bold: true, size: 18, color: "FFFFFF", font: "Arial" })] })],
   });
 }

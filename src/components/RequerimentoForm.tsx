@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RequerimentoData } from '@/types/documents';
+import { ConjugeFields } from './ConjugeFields';
+import { RequerimentoData, emptyConjuge } from '@/types/documents';
 import { generateRequerimentoDocx } from '@/utils/generateRequerimento';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 const initialData: RequerimentoData = {
   nomeRequerente: '', nacionalidade: 'brasileiro(a)', estadoCivil: 'solteiro(a)',
   profissao: '', rg: '', cpf: '', endereco: '', cidade: '', uf: 'PR',
+  conjuge: { ...emptyConjuge },
   denominacaoImovel: '', matricula: '', registro: '', comarca: '', codigoIncra: '',
   nomeOficial: '', cartorios: '',
   nomeProfissional: '', registroProfissional: '',
@@ -31,8 +33,16 @@ function Field({ label, value, onChange, className, placeholder }: {
 export function RequerimentoForm() {
   const [data, setData] = useState<RequerimentoData>(initialData);
 
-  const update = (field: keyof RequerimentoData, value: string) => {
+  const update = (field: keyof RequerimentoData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEstadoCivilChange = (value: string) => {
+    update('estadoCivil', value);
+    const isCasado = value.toLowerCase().includes('casado') || value.toLowerCase().includes('união estável');
+    if (!isCasado) {
+      update('conjuge', { ...emptyConjuge });
+    }
   };
 
   const handleGenerate = async () => {
@@ -63,7 +73,14 @@ export function RequerimentoForm() {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Nome completo" value={data.nomeRequerente} onChange={v => update('nomeRequerente', v)} className="md:col-span-2" />
           <Field label="Nacionalidade" value={data.nacionalidade} onChange={v => update('nacionalidade', v)} />
-          <Field label="Estado Civil" value={data.estadoCivil} onChange={v => update('estadoCivil', v)} />
+          
+          <ConjugeFields
+            estadoCivil={data.estadoCivil}
+            conjuge={data.conjuge}
+            onEstadoCivilChange={handleEstadoCivilChange}
+            onConjugeChange={c => update('conjuge', c)}
+          />
+
           <Field label="Profissão" value={data.profissao} onChange={v => update('profissao', v)} />
           <Field label="RG" value={data.rg} onChange={v => update('rg', v)} />
           <Field label="CPF" value={data.cpf} onChange={v => update('cpf', v)} />

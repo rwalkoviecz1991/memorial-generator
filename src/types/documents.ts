@@ -9,6 +9,22 @@ export interface Vertice {
   distancia: string;
 }
 
+export interface ConjugeData {
+  nome: string;
+  nacionalidade: string;
+  profissao: string;
+  rg: string;
+  orgaoRg: string;
+  cpf: string;
+  cnh: string;
+  orgaoCnh: string;
+}
+
+export const emptyConjuge: ConjugeData = {
+  nome: '', nacionalidade: 'brasileiro(a)', profissao: '',
+  rg: '', orgaoRg: 'SSP-PR', cpf: '', cnh: '', orgaoCnh: 'DETRAN-PR',
+};
+
 export interface AnuenciaData {
   // Confrontante
   nome: string;
@@ -25,6 +41,9 @@ export interface AnuenciaData {
   bairro: string;
   cidade: string;
   uf: string;
+
+  // Cônjuge
+  conjuge: ConjugeData;
 
   // Imóvel do confrontante
   denominacaoConfrontante: string;
@@ -59,6 +78,10 @@ export interface MemorialData {
   nomeProprietario: string;
   cpfProprietario: string;
   rgProprietario: string;
+  estadoCivil: string;
+
+  // Cônjuge
+  conjuge: ConjugeData;
 
   // Imóvel
   denominacaoImovel: string;
@@ -96,6 +119,9 @@ export interface RequerimentoData {
   endereco: string;
   cidade: string;
   uf: string;
+
+  // Cônjuge
+  conjuge: ConjugeData;
 
   // Imóvel
   denominacaoImovel: string;

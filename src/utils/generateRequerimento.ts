@@ -3,7 +3,20 @@ import {
   AlignmentType
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { RequerimentoData } from '@/types/documents';
+import { RequerimentoData, ConjugeData } from '@/types/documents';
+
+function buildConjugeTextReq(conjuge: ConjugeData, estadoCivil: string): TextRun[] {
+  const isCasado = estadoCivil.toLowerCase().includes('casado') || estadoCivil.toLowerCase().includes('união estável');
+  if (!isCasado || !conjuge.nome) return [];
+  const idParts: string[] = [];
+  if (conjuge.rg) idParts.push(`RG nº ${conjuge.rg}`);
+  if (conjuge.cpf) idParts.push(`CPF nº ${conjuge.cpf}`);
+  return [
+    new TextRun({ text: `, casado(a) com ` }),
+    new TextRun({ text: conjuge.nome, bold: true }),
+    new TextRun({ text: idParts.length ? `, ${idParts.join(', ')}` : '' }),
+  ];
+}
 
 export async function generateRequerimentoDocx(data: RequerimentoData) {
   const doc = new Document({
@@ -50,7 +63,9 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
             spacing: { after: 200, line: 360 },
             children: [
               new TextRun({ text: data.nomeRequerente, bold: true }),
-              new TextRun({ text: `, ${data.nacionalidade}, ${data.estadoCivil}, ${data.profissao}, ` }),
+              new TextRun({ text: `, ${data.nacionalidade}, ${data.estadoCivil}` }),
+              ...buildConjugeTextReq(data.conjuge, data.estadoCivil),
+              new TextRun({ text: `, ${data.profissao}, ` }),
               new TextRun({ text: `portador do RG nº ${data.rg} e inscrito no CPF nº ${data.cpf}, ` }),
               new TextRun({ text: `residente e domiciliado em ${data.endereco}, na Cidade de ${data.cidade}-${data.uf}, ` }),
               new TextRun({ text: "vem, respeitosamente, à presença de Vossa Senhoria " }),

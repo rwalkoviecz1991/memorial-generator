@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerticesTable } from './VerticesTable';
-import { AnuenciaData, Vertice } from '@/types/documents';
+import { ConjugeFields } from './ConjugeFields';
+import { AnuenciaData, Vertice, emptyConjuge } from '@/types/documents';
 import { generateAnuenciaDocx } from '@/utils/generateAnuencia';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +15,7 @@ const initialData: AnuenciaData = {
   uniaoEstavel: 'o qual declara que não convive em união estável',
   profissao: '', rg: '', orgaoRg: 'SSP-PR', cnh: '', orgaoCnh: 'DETRAN-PR',
   cpf: '', endereco: '', bairro: '', cidade: '', uf: 'PR',
+  conjuge: { ...emptyConjuge },
   denominacaoConfrontante: '', matriculaConfrontante: '', registroConfrontante: '',
   denominacaoRetificando: '', matriculaRetificando: '', codigoIncra: '', registroRetificando: '',
   nomeProfissional: '', registroProfissional: '', tipoProfissional: 'CFT',
@@ -36,8 +38,19 @@ function Field({ label, value, onChange, className, placeholder }: {
 export function AnuenciaForm() {
   const [data, setData] = useState<AnuenciaData>(initialData);
 
-  const update = (field: keyof AnuenciaData, value: string | Vertice[]) => {
+  const update = (field: keyof AnuenciaData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEstadoCivilChange = (value: string) => {
+    const isCasado = value.toLowerCase().includes('casado') || value.toLowerCase().includes('união estável');
+    update('estadoCivil', value);
+    if (isCasado) {
+      update('uniaoEstavel', '');
+    } else {
+      update('uniaoEstavel', 'o qual declara que não convive em união estável');
+      update('conjuge', { ...emptyConjuge });
+    }
   };
 
   const handleGenerate = async () => {
@@ -62,7 +75,14 @@ export function AnuenciaForm() {
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="Nome completo" value={data.nome} onChange={v => update('nome', v)} className="lg:col-span-2" />
           <Field label="Nacionalidade" value={data.nacionalidade} onChange={v => update('nacionalidade', v)} />
-          <Field label="Estado Civil" value={data.estadoCivil} onChange={v => update('estadoCivil', v)} />
+          
+          <ConjugeFields
+            estadoCivil={data.estadoCivil}
+            conjuge={data.conjuge}
+            onEstadoCivilChange={handleEstadoCivilChange}
+            onConjugeChange={c => update('conjuge', c)}
+          />
+
           <Field label="União Estável" value={data.uniaoEstavel} onChange={v => update('uniaoEstavel', v)} className="lg:col-span-2" />
           <Field label="Profissão" value={data.profissao} onChange={v => update('profissao', v)} />
           <Field label="RG" value={data.rg} onChange={v => update('rg', v)} />
@@ -78,9 +98,7 @@ export function AnuenciaForm() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Imóvel do Confrontante</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Imóvel do Confrontante</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Denominação (Lote/Gleba)" value={data.denominacaoConfrontante} onChange={v => update('denominacaoConfrontante', v)} className="md:col-span-2" />
           <Field label="Matrícula nº" value={data.matriculaConfrontante} onChange={v => update('matriculaConfrontante', v)} />
@@ -89,9 +107,7 @@ export function AnuenciaForm() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Imóvel Retificando</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Imóvel Retificando</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Denominação (Lote/Gleba)" value={data.denominacaoRetificando} onChange={v => update('denominacaoRetificando', v)} className="md:col-span-2" />
           <Field label="Matrícula nº" value={data.matriculaRetificando} onChange={v => update('matriculaRetificando', v)} />
@@ -101,9 +117,7 @@ export function AnuenciaForm() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Profissional Técnico</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Profissional Técnico</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Nome" value={data.nomeProfissional} onChange={v => update('nomeProfissional', v)} className="md:col-span-2" />
           <Field label="Tipo registro (CFT/CREA)" value={data.tipoProfissional} onChange={v => update('tipoProfissional', v)} />
@@ -114,18 +128,14 @@ export function AnuenciaForm() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Vértices Geodésicos</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Vértices Geodésicos</CardTitle></CardHeader>
         <CardContent>
           <VerticesTable vertices={data.vertices} onChange={v => update('vertices', v)} />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Local e Data</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Local e Data</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Local" value={data.localData} onChange={v => update('localData', v)} placeholder="Marmeleiro/PR" />
           <Field label="Data" value={data.dataDocumento} onChange={v => update('dataDocumento', v)} placeholder="24 de março 2026" />

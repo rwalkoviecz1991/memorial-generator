@@ -1,0 +1,118 @@
+export interface Vertice {
+  id: string;
+  codigoEstacao: string;
+  longitude: string;
+  latitude: string;
+  altitude: string;
+  codigoVante: string;
+  azimute: string;
+  distancia: string;
+}
+
+export interface AnuenciaData {
+  // Confrontante
+  nome: string;
+  nacionalidade: string;
+  estadoCivil: string;
+  uniaoEstavel: string;
+  profissao: string;
+  rg: string;
+  orgaoRg: string;
+  cnh: string;
+  orgaoCnh: string;
+  cpf: string;
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+
+  // Imóvel do confrontante
+  denominacaoConfrontante: string;
+  matriculaConfrontante: string;
+  registroConfrontante: string;
+
+  // Imóvel retificando
+  denominacaoRetificando: string;
+  matriculaRetificando: string;
+  codigoIncra: string;
+  registroRetificando: string;
+
+  // Profissional
+  nomeProfissional: string;
+  registroProfissional: string;
+  tipoProfissional: string;
+
+  // Vértices
+  vertices: Vertice[];
+
+  // Local e data
+  localData: string;
+  dataDocumento: string;
+
+  // Credenciamento
+  credenciamento: string;
+  trt: string;
+}
+
+export interface MemorialData {
+  // Proprietário
+  nomeProprietario: string;
+  cpfProprietario: string;
+  rgProprietario: string;
+
+  // Imóvel
+  denominacaoImovel: string;
+  municipio: string;
+  uf: string;
+  matricula: string;
+  registro: string;
+  codigoIncra: string;
+  areaTotal: string;
+  perimetroTotal: string;
+
+  // Vértices
+  vertices: Vertice[];
+
+  // Profissional
+  nomeProfissional: string;
+  registroProfissional: string;
+  tipoProfissional: string;
+  credenciamento: string;
+  trt: string;
+
+  // Data
+  localData: string;
+  dataDocumento: string;
+}
+
+export interface RequerimentoData {
+  // Requerente
+  nomeRequerente: string;
+  nacionalidade: string;
+  estadoCivil: string;
+  profissao: string;
+  rg: string;
+  cpf: string;
+  endereco: string;
+  cidade: string;
+  uf: string;
+
+  // Imóvel
+  denominacaoImovel: string;
+  matricula: string;
+  registro: string;
+  comarca: string;
+  codigoIncra: string;
+
+  // Destinatário
+  nomeOficial: string;
+  cartorios: string;
+
+  // Profissional
+  nomeProfissional: string;
+  registroProfissional: string;
+
+  // Data
+  localData: string;
+  dataDocumento: string;
+}

@@ -3,7 +3,20 @@ import {
   AlignmentType, BorderStyle, WidthType, ShadingType
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { MemorialData } from '@/types/documents';
+import { MemorialData, ConjugeData } from '@/types/documents';
+
+function buildConjugeTextMemorial(conjuge: ConjugeData, estadoCivil: string): TextRun[] {
+  const isCasado = estadoCivil.toLowerCase().includes('casado') || estadoCivil.toLowerCase().includes('união estável');
+  if (!isCasado || !conjuge.nome) return [];
+  const idParts: string[] = [];
+  if (conjuge.cpf) idParts.push(`CPF nº ${conjuge.cpf}`);
+  if (conjuge.rg) idParts.push(`RG nº ${conjuge.rg}`);
+  return [
+    new TextRun({ text: ` e seu cônjuge ` }),
+    new TextRun({ text: conjuge.nome, bold: true }),
+    new TextRun({ text: idParts.length ? `, ${idParts.join(', ')}` : '' }),
+  ];
+}
 
 const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
 const cellBorders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
@@ -61,6 +74,7 @@ export async function generateMemorialDocx(data: MemorialData) {
               new TextRun({ text: data.nomeProprietario, bold: true }),
               new TextRun({ text: `, CPF nº ${data.cpfProprietario}` }),
               new TextRun({ text: data.rgProprietario ? `, RG nº ${data.rgProprietario}` : '' }),
+              ...buildConjugeTextMemorial(data.conjuge, data.estadoCivil),
               new TextRun({ text: "." }),
             ],
           }),

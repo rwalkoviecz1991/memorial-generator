@@ -113,8 +113,10 @@ export interface RequerimentoData {
   nomeRequerente: string;
   nacionalidade: string;
   estadoCivil: string;
+  regimeBens: string;
   profissao: string;
   rg: string;
+  orgaoRg: string;
   cpf: string;
   endereco: string;
   cidade: string;
@@ -126,17 +128,29 @@ export interface RequerimentoData {
   // Imóvel
   denominacaoImovel: string;
   matricula: string;
+  livro: string;
   registro: string;
   comarca: string;
   codigoIncra: string;
+  areaAtual: string;
+  areaGeorreferenciada: string;
+  valorImovel: string;
+  linkSigef: string;
 
   // Destinatário
   nomeOficial: string;
-  cartorios: string;
+  cargoOficial: string;
+  comarcaOficial: string;
 
-  // Profissional
-  nomeProfissional: string;
-  registroProfissional: string;
+  // Representante Legal
+  nomeRepresentante: string;
+  cpfRepresentante: string;
+  rgRepresentante: string;
+  oabRepresentante: string;
+
+  // Rodapé cartório
+  telefoneCartorio: string;
+  emailCartorio: string;
 
   // Data
   localData: string;

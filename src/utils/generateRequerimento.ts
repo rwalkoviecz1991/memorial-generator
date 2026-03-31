@@ -1,6 +1,6 @@
 import {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, TabStopType, TabStopPosition
+  Document, Packer, Paragraph, TextRun, ImageRun,
+  AlignmentType, BorderStyle, TabStopType
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { RequerimentoData, ConjugeData } from '@/types/documents';
@@ -14,14 +14,6 @@ function buildConjugeTextReq(conjuge: ConjugeData, estadoCivil: string, regimeBe
     parts.push(new TextRun({ text: `, casados pelo regime de ${regimeBens}` }));
   }
 
-  const conjParts: string[] = [];
-  if (conjuge.nacionalidade) conjParts.push(conjuge.nacionalidade);
-  if (conjuge.profissao) conjParts.push(conjuge.profissao);
-
-  const idParts: string[] = [];
-  if (conjuge.rg) idParts.push(`portador(a) da C.I.RG ${conjuge.rg} ${conjuge.orgaoRg}`);
-  if (conjuge.cpf) idParts.push(`CPF: ${conjuge.cpf}`);
-
   parts.push(new TextRun({ text: `, ele, ${conjuge.profissao || 'profissão não informada'}` }));
   if (conjuge.rg) parts.push(new TextRun({ text: `, portador(a) da C.I.R.G. n° ${conjuge.rg} ${conjuge.orgaoRg}` }));
   if (conjuge.cpf) parts.push(new TextRun({ text: ` e inscrito(a) no CPF/MF sob n° ${conjuge.cpf}` }));
@@ -29,19 +21,28 @@ function buildConjugeTextReq(conjuge: ConjugeData, estadoCivil: string, regimeBe
   return parts;
 }
 
-function calcDiferenca(areaAtual: string, areaGeo: string): string {
+function calcDiferenca(areaAtual: string, areaGeo: string): { texto: string; tipo: string } {
   const parseNum = (s: string) => parseFloat(s.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
   const atual = parseNum(areaAtual);
   const geo = parseNum(areaGeo);
-  if (isNaN(atual) || isNaN(geo) || atual === 0) return '';
-  const diff = Math.abs(geo - atual);
-  const pct = ((diff / atual) * 100).toFixed(2).replace('.', ',');
-  const formatted = diff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${formatted} m², que corresponde à ${pct}%`;
+  if (isNaN(atual) || isNaN(geo) || atual === 0) return { texto: '', tipo: '' };
+  const diff = geo - atual;
+  const absDiff = Math.abs(diff);
+  const pct = ((absDiff / atual) * 100).toFixed(2).replace('.', ',');
+  const formatted = absDiff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const tipo = diff > 0 ? 'Acréscimo' : diff < 0 ? 'Decréscimo' : '';
+  return { texto: `${formatted} m², que corresponde à ${pct}%`, tipo };
 }
 
-const dotBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
-const noBorders = { top: dotBorder, bottom: dotBorder, left: dotBorder, right: dotBorder };
+async function fetchLogoAsBuffer(): Promise<ArrayBuffer | null> {
+  try {
+    const response = await fetch('/templates/cabecalho-ri.png');
+    if (!response.ok) return null;
+    return await response.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
 
 function createDotLeaderRow(label: string, value: string): Paragraph {
   return new Paragraph({
@@ -57,7 +58,56 @@ function createDotLeaderRow(label: string, value: string): Paragraph {
 
 export async function generateRequerimentoDocx(data: RequerimentoData) {
   const conjugeRuns = buildConjugeTextReq(data.conjuge, data.estadoCivil, data.regimeBens);
-  const diferenca = calcDiferenca(data.areaAtual, data.areaGeorreferenciada);
+  const { texto: diferenca, tipo: tipoDiferenca } = calcDiferenca(data.areaAtual, data.areaGeorreferenciada);
+
+  const logoBuffer = await fetchLogoAsBuffer();
+
+  const headerChildren: Paragraph[] = [];
+
+  // Logo image
+  if (logoBuffer) {
+    headerChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 100 },
+        children: [
+          new ImageRun({
+            type: 'png',
+            data: logoBuffer,
+            transformation: { width: 350, height: 100 },
+            altText: { title: "Logo RI", description: "Registro de Imóveis", name: "logo-ri" },
+          }),
+        ],
+      })
+    );
+  } else {
+    // Fallback text header
+    headerChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 40 },
+        children: [new TextRun({ text: "REGISTRO DE IMÓVEIS", bold: true, size: 28 })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 60 },
+        children: [new TextRun({ text: data.comarcaOficial || 'MARMELEIRO-PR', italics: true, size: 22 })],
+      })
+    );
+  }
+
+  // Nome do oficial
+  headerChildren.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [
+        new TextRun({ text: `${data.nomeOficial || ''}`, size: 18 }),
+        new TextRun({ text: ` - `, size: 18 }),
+        new TextRun({ text: `${data.cargoOficial || 'REGISTRADORA OFICIAL'}`, bold: true, size: 18 }),
+      ],
+    })
+  );
 
   const doc = new Document({
     styles: {
@@ -74,34 +124,11 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
           },
         },
         children: [
-          // Header: REGISTRO DE IMÓVEIS
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 40 },
-            children: [
-              new TextRun({ text: "REGISTRO DE IMÓVEIS", bold: true, size: 28 }),
-            ],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 60 },
-            children: [
-              new TextRun({ text: `${data.comarcaOficial || 'MARMELEIRO-PR'}`, italics: true, size: 22 }),
-            ],
-          }),
-          // Nome do oficial
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
-            children: [
-              new TextRun({ text: `${data.nomeOficial}`, size: 18 }),
-              new TextRun({ text: ` - ${data.cargoOficial || 'REGISTRADORA OFICIAL'}`, bold: true, size: 18 }),
-            ],
-          }),
+          ...headerChildren,
 
           // Barra cinza - Destinatário
           new Paragraph({
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.JUSTIFIED,
             spacing: { after: 200 },
             border: {
               top: { style: BorderStyle.SINGLE, size: 1, color: "000000", space: 4 },
@@ -133,16 +160,16 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
             indent: { firstLine: 720 },
             children: [
               new TextRun({ text: data.nomeRequerente, bold: true }),
-              new TextRun({ text: `, ${data.nacionalidade}s, ${data.estadoCivil}` }),
+              new TextRun({ text: `, ${data.nacionalidade}, ${data.estadoCivil}` }),
               ...conjugeRuns,
-              new TextRun({ text: `, ${data.profissao}, portador da C.I.R.G. n° ${data.rg} ${data.orgaoRg} e inscrito no CPF/MF sob n° ${data.cpf}` }),
+              new TextRun({ text: `, ${data.profissao}, portador(a) da C.I.R.G. n° ${data.rg} ${data.orgaoRg} e inscrito(a) no CPF/MF sob n° ${data.cpf}` }),
               ...(data.conjuge.nome ? [
                 new TextRun({ text: `, ela, ${data.conjuge.nacionalidade || 'brasileira'}, ${data.conjuge.profissao || 'do lar'}` }),
                 new TextRun({ text: data.conjuge.rg ? `, portadora da C.I.RG ${data.conjuge.rg} ${data.conjuge.orgaoRg}` : '' }),
                 new TextRun({ text: data.conjuge.cpf ? ` e CPF: ${data.conjuge.cpf}` : '' }),
               ] : []),
-              new TextRun({ text: `, residentes e domiciliados na ${data.endereco} nesta cidade e comarca.` }),
-              new TextRun({ text: `Vem perante Vossa Senhoria, ` }),
+              new TextRun({ text: `, residente${data.conjuge.nome ? 's' : ''} e domiciliado${data.conjuge.nome ? 's' : ''} na ${data.endereco}, nesta cidade e comarca.` }),
+              new TextRun({ text: ` Vem perante Vossa Senhoria, ` }),
               new TextRun({ text: "requerer", bold: true }),
               new TextRun({ text: ` a averbação de memorial descritivo georreferenciado ao Sistema Geodésico Brasileiro/retificação de registro, na matrícula nº ` }),
               new TextRun({ text: data.matricula, bold: true }),
@@ -169,7 +196,7 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
           new Paragraph({
             spacing: { after: 200 },
             children: [
-              new TextRun({ text: `Total de Acréscimo/Decréscimo de área ${diferenca}` }),
+              new TextRun({ text: `Total de ${tipoDiferenca || 'Acréscimo/Decréscimo'} de área ${diferenca}` }),
             ],
           }),
 
@@ -210,10 +237,8 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
           new Paragraph({
             alignment: AlignmentType.LEFT,
             spacing: { after: 60 },
-            indent: { firstLine: 720 },
             children: [new TextRun({ text: "Nestes termos," })],
           }),
-
           new Paragraph({
             alignment: AlignmentType.LEFT,
             spacing: { after: 400 },
@@ -224,6 +249,7 @@ export async function generateRequerimentoDocx(data: RequerimentoData) {
 
           // Assinatura
           ...(data.nomeRepresentante ? [
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "___________________________________________" })] }),
             new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.nomeRepresentante })] }),
             new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Representante Legal" })] }),
             new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `C.P.F. ${data.cpfRepresentante}`, size: 20 })] }),

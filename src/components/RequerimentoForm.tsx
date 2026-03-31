@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConjugeFields } from './ConjugeFields';
 import { RequerimentoData, emptyConjuge } from '@/types/documents';
 import { generateRequerimentoDocx } from '@/utils/generateRequerimento';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { getMunicipios, getClassesDisponiveis, calcularValorImovel, CLASSES_USO, type ClasseUso } from '@/data/precosTerras';
 
 const initialData: RequerimentoData = {
   nomeRequerente: '', nacionalidade: 'brasileiro(a)', estadoCivil: 'solteiro(a)',
@@ -15,6 +17,7 @@ const initialData: RequerimentoData = {
   endereco: '', cidade: '', uf: 'PR',
   conjuge: { ...emptyConjuge },
   denominacaoImovel: '', matricula: '', livro: '02', registro: '', comarca: '',
+  municipioImovel: '', classeCapacidadeUso: '',
   codigoIncra: '', areaAtual: '', areaGeorreferenciada: '', valorImovel: '', linkSigef: '',
   nomeOficial: '', cargoOficial: 'REGISTRADORA', comarcaOficial: '',
   nomeRepresentante: '', cpfRepresentante: '', rgRepresentante: '', oabRepresentante: '',
@@ -22,23 +25,47 @@ const initialData: RequerimentoData = {
   localData: '', dataDocumento: '',
 };
 
-function Field({ label, value, onChange, className, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; className?: string; placeholder?: string;
+function Field({ label, value, onChange, className, placeholder, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; className?: string; placeholder?: string; disabled?: boolean;
 }) {
   return (
     <div className={className}>
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="mt-1" />
+      <Input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="mt-1" disabled={disabled} />
     </div>
   );
 }
 
 export function RequerimentoForm() {
   const [data, setData] = useState<RequerimentoData>(initialData);
+  const [municipios] = useState(getMunicipios);
+  const [classesDisponiveis, setClassesDisponiveis] = useState<ClasseUso[]>([]);
+  const [municipioFilter, setMunicipioFilter] = useState('');
 
   const update = (field: keyof RequerimentoData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Update available classes when municipality changes
+  useEffect(() => {
+    if (data.municipioImovel) {
+      const classes = getClassesDisponiveis(data.municipioImovel);
+      setClassesDisponiveis(classes);
+      if (data.classeCapacidadeUso && !classes.includes(data.classeCapacidadeUso as ClasseUso)) {
+        update('classeCapacidadeUso', '');
+      }
+    } else {
+      setClassesDisponiveis([]);
+    }
+  }, [data.municipioImovel]);
+
+  // Auto-calculate property value
+  useEffect(() => {
+    if (data.municipioImovel && data.classeCapacidadeUso && data.areaGeorreferenciada) {
+      const valor = calcularValorImovel(data.areaGeorreferenciada, data.municipioImovel, data.classeCapacidadeUso as ClasseUso);
+      if (valor) update('valorImovel', valor);
+    }
+  }, [data.municipioImovel, data.classeCapacidadeUso, data.areaGeorreferenciada]);
 
   const handleEstadoCivilChange = (value: string) => {
     update('estadoCivil', value);
@@ -58,6 +85,10 @@ export function RequerimentoForm() {
       toast.error('Erro ao gerar documento.');
     }
   };
+
+  const filteredMunicipios = municipioFilter
+    ? municipios.filter(m => m.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(municipioFilter.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')))
+    : municipios;
 
   return (
     <div className="space-y-6">
@@ -104,10 +135,49 @@ export function RequerimentoForm() {
           <Field label="Livro" value={data.livro} onChange={v => update('livro', v)} placeholder="02" />
           <Field label="Registro de Imóveis / Comarca" value={data.registro} onChange={v => update('registro', v)} />
           <Field label="Comarca" value={data.comarca} onChange={v => update('comarca', v)} />
+
+          {/* Município para cálculo do valor */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Município (para valor da terra)</Label>
+            <Select value={data.municipioImovel} onValueChange={v => update('municipioImovel', v)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Selecione o município" />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="p-2">
+                  <Input
+                    placeholder="Filtrar município..."
+                    value={municipioFilter}
+                    onChange={e => setMunicipioFilter(e.target.value)}
+                    className="mb-2"
+                  />
+                </div>
+                {filteredMunicipios.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Classe de capacidade de uso */}
+          <div>
+            <Label className="text-xs text-muted-foreground">Classe de capacidade de uso</Label>
+            <Select value={data.classeCapacidadeUso} onValueChange={v => update('classeCapacidadeUso', v)} disabled={classesDisponiveis.length === 0}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={classesDisponiveis.length === 0 ? "Selecione o município primeiro" : "Selecione a classe"} />
+              </SelectTrigger>
+              <SelectContent>
+                {classesDisponiveis.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Field label="Código INCRA (Certificação)" value={data.codigoIncra} onChange={v => update('codigoIncra', v)} />
           <Field label="Área atual do imóvel (m²)" value={data.areaAtual} onChange={v => update('areaAtual', v)} placeholder="211.936,00 m²" />
           <Field label="Área após georreferenciamento (m²)" value={data.areaGeorreferenciada} onChange={v => update('areaGeorreferenciada', v)} placeholder="212.240,00 m²" />
-          <Field label="Valor do imóvel (R$)" value={data.valorImovel} onChange={v => update('valorImovel', v)} placeholder="1.421.654,19" />
+          <Field label="Valor do imóvel (R$) - calculado automaticamente" value={data.valorImovel} onChange={v => update('valorImovel', v)} placeholder="Calculado com base no município e classe" />
           <Field label="Link SIGEF (autenticidade)" value={data.linkSigef} onChange={v => update('linkSigef', v)} className="md:col-span-3" placeholder="http://sigef.incra.gov.br/autenticidade/..." />
         </CardContent>
       </Card>

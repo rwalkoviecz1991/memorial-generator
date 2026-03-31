@@ -131,6 +131,8 @@ export interface RequerimentoData {
   livro: string;
   registro: string;
   comarca: string;
+  municipioImovel: string;
+  classeCapacidadeUso: string;
   codigoIncra: string;
   areaAtual: string;
   areaGeorreferenciada: string;

@@ -9,7 +9,7 @@ import { RequerimentoData, emptyConjuge } from '@/types/documents';
 import { generateRequerimentoDocx } from '@/utils/generateRequerimento';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { getMunicipios, getClassesDisponiveis, calcularValorImovel, CLASSES_USO, type ClasseUso } from '@/data/precosTerras';
+import { getMunicipios, calcularValorImovel } from '@/data/precosTerras';
 
 const initialData: RequerimentoData = {
   nomeRequerente: '', nacionalidade: 'brasileiro(a)', estadoCivil: 'solteiro(a)',

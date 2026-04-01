@@ -46,26 +46,13 @@ export function RequerimentoForm() {
     setData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Update available classes when municipality changes
+  // Auto-calculate property value using average of all available classes
   useEffect(() => {
-    if (data.municipioImovel) {
-      const classes = getClassesDisponiveis(data.municipioImovel);
-      setClassesDisponiveis(classes);
-      if (data.classeCapacidadeUso && !classes.includes(data.classeCapacidadeUso as ClasseUso)) {
-        update('classeCapacidadeUso', '');
-      }
-    } else {
-      setClassesDisponiveis([]);
-    }
-  }, [data.municipioImovel]);
-
-  // Auto-calculate property value
-  useEffect(() => {
-    if (data.municipioImovel && data.classeCapacidadeUso && data.areaGeorreferenciada) {
-      const valor = calcularValorImovel(data.areaGeorreferenciada, data.municipioImovel, data.classeCapacidadeUso as ClasseUso);
+    if (data.municipioImovel && data.areaGeorreferenciada) {
+      const valor = calcularValorImovel(data.areaGeorreferenciada, data.municipioImovel);
       if (valor) update('valorImovel', valor);
     }
-  }, [data.municipioImovel, data.classeCapacidadeUso, data.areaGeorreferenciada]);
+  }, [data.municipioImovel, data.areaGeorreferenciada]);
 
   const handleEstadoCivilChange = (value: string) => {
     update('estadoCivil', value);

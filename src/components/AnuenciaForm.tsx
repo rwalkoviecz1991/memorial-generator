@@ -37,7 +37,7 @@ function Field({ label, value, onChange, className, placeholder }: {
   );
 }
 
-export function AnuenciaForm() {
+export function AnuenciaForm({ matriculaRefreshKey }: { matriculaRefreshKey?: number }) {
   const [data, setData] = useState<AnuenciaData>(initialData);
 
   const update = (field: keyof AnuenciaData, value: any) => {

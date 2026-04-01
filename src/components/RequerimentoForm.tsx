@@ -38,7 +38,7 @@ function Field({ label, value, onChange, className, placeholder, disabled }: {
   );
 }
 
-export function RequerimentoForm() {
+export function RequerimentoForm({ matriculaRefreshKey }: { matriculaRefreshKey?: number }) {
   const [data, setData] = useState<RequerimentoData>(initialData);
   const [municipios] = useState(getMunicipios);
   

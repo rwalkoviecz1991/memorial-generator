@@ -39,7 +39,7 @@ function Field({ label, value, onChange, className, placeholder, disabled }: {
 export function RequerimentoForm() {
   const [data, setData] = useState<RequerimentoData>(initialData);
   const [municipios] = useState(getMunicipios);
-  const [classesDisponiveis, setClassesDisponiveis] = useState<ClasseUso[]>([]);
+  
   const [municipioFilter, setMunicipioFilter] = useState('');
 
   const update = (field: keyof RequerimentoData, value: any) => {

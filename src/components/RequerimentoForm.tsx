@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConjugeFields } from './ConjugeFields';
+import { MatriculaSelector } from './MatriculaSelector';
 import { RequerimentoData, emptyConjuge } from '@/types/documents';
+import type { MatriculaData } from '@/types/matricula';
 import { generateRequerimentoDocx } from '@/utils/generateRequerimento';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,7 +38,7 @@ function Field({ label, value, onChange, className, placeholder, disabled }: {
   );
 }
 
-export function RequerimentoForm() {
+export function RequerimentoForm({ matriculaRefreshKey }: { matriculaRefreshKey?: number }) {
   const [data, setData] = useState<RequerimentoData>(initialData);
   const [municipios] = useState(getMunicipios);
   
@@ -93,6 +95,36 @@ export function RequerimentoForm() {
       <Card>
         <CardHeader><CardTitle className="text-base">Dados do Requerente</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-3">
+            <MatriculaSelector refreshKey={matriculaRefreshKey} onSelect={(m: MatriculaData) => {
+              setData(prev => ({
+                ...prev,
+                nomeRequerente: m.nomeProprietario || prev.nomeRequerente,
+                nacionalidade: m.nacionalidade || prev.nacionalidade,
+                estadoCivil: m.estadoCivil || prev.estadoCivil,
+                profissao: m.profissao || prev.profissao,
+                rg: m.rg || prev.rg,
+                cpf: m.cpf || prev.cpf,
+                endereco: m.endereco || prev.endereco,
+                cidade: m.cidade || prev.cidade,
+                uf: m.uf || prev.uf,
+                denominacaoImovel: m.denominacaoImovel || prev.denominacaoImovel,
+                matricula: m.numeroMatricula || prev.matricula,
+                registro: m.registro || prev.registro,
+                comarca: m.comarca || prev.comarca,
+                municipioImovel: m.municipioImovel || prev.municipioImovel,
+                areaAtual: m.area || prev.areaAtual,
+                livro: m.livro || prev.livro,
+                conjuge: m.nomeConjuge ? {
+                  ...prev.conjuge,
+                  nome: m.nomeConjuge,
+                  cpf: m.cpfConjuge || prev.conjuge.cpf,
+                  rg: m.rgConjuge || prev.conjuge.rg,
+                } : prev.conjuge,
+              }));
+              toast.success('Dados da matrícula aplicados.');
+            }} />
+          </div>
           <Field label="Nome completo" value={data.nomeRequerente} onChange={v => update('nomeRequerente', v)} className="md:col-span-2" />
           <Field label="Nacionalidade" value={data.nacionalidade} onChange={v => update('nacionalidade', v)} />
           

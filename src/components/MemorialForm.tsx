@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { MatriculaSelector } from './MatriculaSelector';
+import type { MatriculaData } from '@/types/matricula';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +35,7 @@ function Field({ label, value, onChange, className, placeholder }: {
   );
 }
 
-export function MemorialForm() {
+export function MemorialForm({ matriculaRefreshKey }: { matriculaRefreshKey?: number }) {
   const [data, setData] = useState<MemorialData>(initialData);
 
   const update = (field: keyof MemorialData, value: any) => {
@@ -61,11 +63,31 @@ export function MemorialForm() {
     }
   };
 
+  const handleMatriculaSelect = (m: MatriculaData) => {
+    setData(prev => ({
+      ...prev,
+      nomeProprietario: m.nomeProprietario || prev.nomeProprietario,
+      cpfProprietario: m.cpf || prev.cpfProprietario,
+      rgProprietario: m.rg || prev.rgProprietario,
+      denominacaoImovel: m.denominacaoImovel || prev.denominacaoImovel,
+      municipio: m.municipioImovel || prev.municipio,
+      uf: m.uf || prev.uf,
+      matricula: m.numeroMatricula || prev.matricula,
+      registro: m.registro || prev.registro,
+      codigoIncra: prev.codigoIncra,
+      areaTotal: m.area || prev.areaTotal,
+    }));
+    toast.success('Dados da matrícula aplicados.');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle className="text-base">Proprietário</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-3">
+            <MatriculaSelector onSelect={handleMatriculaSelect} refreshKey={matriculaRefreshKey} />
+          </div>
           <Field label="Nome completo" value={data.nomeProprietario} onChange={v => update('nomeProprietario', v)} className="md:col-span-2" />
           <Field label="CPF" value={data.cpfProprietario} onChange={v => update('cpfProprietario', v)} />
           <Field label="RG (opcional)" value={data.rgProprietario} onChange={v => update('rgProprietario', v)} />

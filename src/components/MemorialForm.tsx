@@ -35,7 +35,7 @@ function Field({ label, value, onChange, className, placeholder }: {
   );
 }
 
-export function MemorialForm() {
+export function MemorialForm({ matriculaRefreshKey }: { matriculaRefreshKey?: number }) {
   const [data, setData] = useState<MemorialData>(initialData);
 
   const update = (field: keyof MemorialData, value: any) => {

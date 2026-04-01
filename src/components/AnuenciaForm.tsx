@@ -68,6 +68,24 @@ export function AnuenciaForm({ matriculaRefreshKey }: { matriculaRefreshKey?: nu
     }
   };
 
+  const handleMatriculaSelect = (m: MatriculaData) => {
+    setData(prev => ({
+      ...prev,
+      nome: m.nomeProprietario || prev.nome,
+      nacionalidade: m.nacionalidade || prev.nacionalidade,
+      cpf: m.cpf || prev.cpf,
+      rg: m.rg || prev.rg,
+      profissao: m.profissao || prev.profissao,
+      cidade: m.cidade || prev.cidade,
+      uf: m.uf || prev.uf,
+      endereco: m.endereco || prev.endereco,
+      denominacaoRetificando: m.denominacaoImovel || prev.denominacaoRetificando,
+      matriculaRetificando: m.numeroMatricula || prev.matriculaRetificando,
+      registroRetificando: m.registro || prev.registroRetificando,
+    }));
+    toast.success('Dados da matrícula aplicados.');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -75,6 +93,9 @@ export function AnuenciaForm({ matriculaRefreshKey }: { matriculaRefreshKey?: nu
           <CardTitle className="text-base">Dados do Confrontante</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="md:col-span-3">
+            <MatriculaSelector onSelect={handleMatriculaSelect} refreshKey={matriculaRefreshKey} />
+          </div>
           <Field label="Nome completo" value={data.nome} onChange={v => update('nome', v)} className="lg:col-span-2" />
           <Field label="Nacionalidade" value={data.nacionalidade} onChange={v => update('nacionalidade', v)} />
           

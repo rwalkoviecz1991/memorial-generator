@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnuenciaForm } from '@/components/AnuenciaForm';
 import { MemorialForm } from '@/components/MemorialForm';
 import { RequerimentoForm } from '@/components/RequerimentoForm';
+import { MatriculaManager } from '@/components/MatriculaManager';
 import { FileText, MapPin, ClipboardList } from 'lucide-react';
 
 const Index = () => {
+  const [matriculaKey, setMatriculaKey] = useState(0);
+  const refreshMatriculas = () => setMatriculaKey(k => k + 1);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="max-w-5xl mx-auto px-4 py-5">
           <div className="flex items-center gap-3">
@@ -15,19 +19,16 @@ const Index = () => {
               <MapPin className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground tracking-tight">
-                GeoDoc
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Geração de documentos para georreferenciamento
-              </p>
+              <h1 className="text-xl font-bold text-foreground tracking-tight">GeoDoc</h1>
+              <p className="text-sm text-muted-foreground">Geração de documentos para georreferenciamento</p>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+        <MatriculaManager onUpdate={refreshMatriculas} />
+
         <Tabs defaultValue="anuencia" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 h-auto p-1">
             <TabsTrigger value="anuencia" className="gap-2 py-2.5 text-xs sm:text-sm">
@@ -45,15 +46,13 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="anuencia">
-            <AnuenciaForm />
+            <AnuenciaForm matriculaRefreshKey={matriculaKey} />
           </TabsContent>
-
           <TabsContent value="memorial">
-            <MemorialForm />
+            <MemorialForm matriculaRefreshKey={matriculaKey} />
           </TabsContent>
-
           <TabsContent value="requerimento">
-            <RequerimentoForm />
+            <RequerimentoForm matriculaRefreshKey={matriculaKey} />
           </TabsContent>
         </Tabs>
       </main>

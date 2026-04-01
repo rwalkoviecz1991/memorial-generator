@@ -146,21 +146,6 @@ export function RequerimentoForm() {
             </Select>
           </div>
 
-          {/* Classe de capacidade de uso */}
-          <div>
-            <Label className="text-xs text-muted-foreground">Classe de capacidade de uso</Label>
-            <Select value={data.classeCapacidadeUso} onValueChange={v => update('classeCapacidadeUso', v)} disabled={classesDisponiveis.length === 0}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={classesDisponiveis.length === 0 ? "Selecione o município primeiro" : "Selecione a classe"} />
-              </SelectTrigger>
-              <SelectContent>
-                {classesDisponiveis.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <Field label="Código INCRA (Certificação)" value={data.codigoIncra} onChange={v => update('codigoIncra', v)} />
           <Field label="Área atual do imóvel (m²)" value={data.areaAtual} onChange={v => update('areaAtual', v)} placeholder="211.936,00 m²" />
           <Field label="Área após georreferenciamento (m²)" value={data.areaGeorreferenciada} onChange={v => update('areaGeorreferenciada', v)} placeholder="212.240,00 m²" />

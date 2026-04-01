@@ -418,13 +418,20 @@ export function getPrecoHectare(municipio: string, classe: ClasseUso): number | 
   return PRECOS_TERRAS[normalized]?.[classe] ?? null;
 }
 
-export function calcularValorImovel(areaM2: string, municipio: string, classe: ClasseUso): string {
-  const preco = getPrecoHectare(municipio, classe);
-  if (!preco) return '';
+export function calcularValorImovel(areaM2: string, municipio: string): string {
+  const normalized = Object.keys(PRECOS_TERRAS).find(
+    k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 
+         municipio.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  );
+  if (!normalized) return '';
+  const precos = PRECOS_TERRAS[normalized];
+  const valores = Object.values(precos).filter((v): v is number => v !== undefined);
+  if (valores.length === 0) return '';
+  const media = valores.reduce((a, b) => a + b, 0) / valores.length;
   const areaNum = parseFloat(areaM2.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
   if (isNaN(areaNum)) return '';
   const hectares = areaNum / 10000;
-  const valor = hectares * preco;
+  const valor = hectares * media;
   return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

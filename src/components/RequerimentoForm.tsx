@@ -9,7 +9,7 @@ import { RequerimentoData, emptyConjuge } from '@/types/documents';
 import { generateRequerimentoDocx } from '@/utils/generateRequerimento';
 import { FileDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { getMunicipios, getClassesDisponiveis, calcularValorImovel, CLASSES_USO, type ClasseUso } from '@/data/precosTerras';
+import { getMunicipios, calcularValorImovel } from '@/data/precosTerras';
 
 const initialData: RequerimentoData = {
   nomeRequerente: '', nacionalidade: 'brasileiro(a)', estadoCivil: 'solteiro(a)',
@@ -39,33 +39,20 @@ function Field({ label, value, onChange, className, placeholder, disabled }: {
 export function RequerimentoForm() {
   const [data, setData] = useState<RequerimentoData>(initialData);
   const [municipios] = useState(getMunicipios);
-  const [classesDisponiveis, setClassesDisponiveis] = useState<ClasseUso[]>([]);
+  
   const [municipioFilter, setMunicipioFilter] = useState('');
 
   const update = (field: keyof RequerimentoData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Update available classes when municipality changes
+  // Auto-calculate property value using average of all available classes
   useEffect(() => {
-    if (data.municipioImovel) {
-      const classes = getClassesDisponiveis(data.municipioImovel);
-      setClassesDisponiveis(classes);
-      if (data.classeCapacidadeUso && !classes.includes(data.classeCapacidadeUso as ClasseUso)) {
-        update('classeCapacidadeUso', '');
-      }
-    } else {
-      setClassesDisponiveis([]);
-    }
-  }, [data.municipioImovel]);
-
-  // Auto-calculate property value
-  useEffect(() => {
-    if (data.municipioImovel && data.classeCapacidadeUso && data.areaGeorreferenciada) {
-      const valor = calcularValorImovel(data.areaGeorreferenciada, data.municipioImovel, data.classeCapacidadeUso as ClasseUso);
+    if (data.municipioImovel && data.areaGeorreferenciada) {
+      const valor = calcularValorImovel(data.areaGeorreferenciada, data.municipioImovel);
       if (valor) update('valorImovel', valor);
     }
-  }, [data.municipioImovel, data.classeCapacidadeUso, data.areaGeorreferenciada]);
+  }, [data.municipioImovel, data.areaGeorreferenciada]);
 
   const handleEstadoCivilChange = (value: string) => {
     update('estadoCivil', value);
@@ -154,21 +141,6 @@ export function RequerimentoForm() {
                 </div>
                 {filteredMunicipios.map(m => (
                   <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Classe de capacidade de uso */}
-          <div>
-            <Label className="text-xs text-muted-foreground">Classe de capacidade de uso</Label>
-            <Select value={data.classeCapacidadeUso} onValueChange={v => update('classeCapacidadeUso', v)} disabled={classesDisponiveis.length === 0}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={classesDisponiveis.length === 0 ? "Selecione o município primeiro" : "Selecione a classe"} />
-              </SelectTrigger>
-              <SelectContent>
-                {classesDisponiveis.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

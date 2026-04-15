@@ -6,19 +6,73 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 export async function extractTextFromPdf(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    useSystemFonts: true,
+    disableFontFace: false,
+    verbosity: 0,
+  }).promise;
   let fullText = '';
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: any) => item.str)
-      .join(' ');
-    fullText += pageText + '\n';
+    const content = await page.getTextContent({ includeMarkedContent: false });
+    const viewport = page.getViewport({ scale: 1.0 });
+
+    // Sort items by vertical position (top to bottom), then horizontal (left to right)
+    const items = (content.items as any[])
+      .filter(item => item.str && item.str.trim() !== '')
+      .map(item => ({
+        str: item.str,
+        x: item.transform[4],
+        y: viewport.height - item.transform[5], // flip Y axis
+        width: item.width,
+        height: item.height || item.transform[0],
+        fontName: item.fontName,
+      }));
+
+    // Group items into lines based on Y position (tolerance for same line)
+    const lines: { y: number; items: typeof items }[] = [];
+    const LINE_TOLERANCE = 3;
+
+    for (const item of items) {
+      const existingLine = lines.find(l => Math.abs(l.y - item.y) < LINE_TOLERANCE);
+      if (existingLine) {
+        existingLine.items.push(item);
+      } else {
+        lines.push({ y: item.y, items: [item] });
+      }
+    }
+
+    // Sort lines top-to-bottom, items left-to-right within each line
+    lines.sort((a, b) => a.y - b.y);
+    for (const line of lines) {
+      line.items.sort((a, b) => a.x - b.x);
+    }
+
+    // Build text with smart spacing
+    const pageLines: string[] = [];
+    for (const line of lines) {
+      let lineText = '';
+      for (let j = 0; j < line.items.length; j++) {
+        const item = line.items[j];
+        if (j > 0) {
+          const prev = line.items[j - 1];
+          const gap = item.x - (prev.x + prev.width);
+          // Add space if gap is significant
+          if (gap > 2) {
+            lineText += gap > 15 ? '   ' : ' ';
+          }
+        }
+        lineText += item.str;
+      }
+      pageLines.push(lineText.trim());
+    }
+
+    fullText += pageLines.filter(l => l.length > 0).join('\n') + '\n\n';
   }
 
-  return fullText;
+  return fullText.trim();
 }
 
 function findMatch(text: string, patterns: RegExp[]): string {

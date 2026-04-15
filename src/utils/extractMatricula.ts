@@ -83,117 +83,152 @@ function findMatch(text: string, patterns: RegExp[]): string {
   return '';
 }
 
-function extractCpf(text: string): string {
-  const match = text.match(/CPF[:\s]*(?:n[ºo°]?\s*)?(\d{3}[.\s]?\d{3}[.\s]?\d{3}[-.\s]?\d{2})/i);
-  return match ? match[1] : '';
-}
-
-function extractRg(text: string): string {
-  const match = text.match(/(?:RG|R\.G\.|cédula de identidade)[:\s]*(?:n[ºo°]?\s*)?([0-9][0-9.\-\/]+[0-9])/i);
-  return match ? match[1] : '';
+function findAllMatches(text: string, pattern: RegExp): string[] {
+  const results: string[] = [];
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
 }
 
 export function parseMatriculaText(text: string, fileName: string): Partial<MatriculaData> {
   const t = text.replace(/\s+/g, ' ');
 
-  // Matrícula number
+  // ── Matrícula number ──
   const numMatricula = findMatch(t, [
-    /matr[ií]cula\s*(?:n[ºo°]?\s*)?(\d+[\.\d]*)/i,
-    /(?:sob\s*(?:o\s*)?n[ºo°]?\s*)(\d+[\.\d]*)/i,
+    /matr[ií]cula\s*n[.ºo°]?\s*([\d.]+)/i,
+    /REGISTRO\s*\*?\*?([\d.]+)\*?\*?/i,
+    /(?:sob\s*(?:o\s*)?n[ºo°]?\s*)([\d.]+)/i,
+  ]).replace(/\./g, '');
+
+  // ── Comarca ──
+  const comarca = findMatch(t, [
+    /[Cc]omarca\s+(?:de\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇa-záàâãéêíóôõúüç\s]+?)(?:\s*[-–]\s*[A-Z]{2})/,
+    /[Cc]omarca\s+(?:de\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇa-záàâãéêíóôõúüç\s]+?)(?:,|\.|$)/,
   ]);
 
-  // CPF - find all CPFs
-  const cpfPattern = /CPF[:\s]*(?:n[ºo°]?\s*)?(\d{3}[.\s]?\d{3}[.\s]?\d{3}[-.\s]?\d{2})/gi;
-  const cpfs: string[] = [];
-  let cpfMatch;
-  while ((cpfMatch = cpfPattern.exec(t)) !== null) {
-    cpfs.push(cpfMatch[1]);
+  // ── Seção PROPRIETÁRIOS ──
+  const propSection = t.match(/PROPRIET[AÁ]RIOS?:?\s*(.*?)(?:T[IÍ]TULO AQUISITIVO|Dou f[eé]|AV-\d|R-\d|$)/is);
+  const propText = propSection ? propSection[1] : '';
+
+  // ── Nome proprietário ──
+  // Pattern: "PROPRIETÁRIOS: NOME COMPLETO, e sua mulher..." or "PROPRIETÁRIOS: NOME, brasileiro..."
+  let nome = '';
+  if (propText) {
+    const nomeMatch = propText.match(/^\s*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,\s*e\s+su[ao]\s+(?:mulher|esposa?|marido)|,\s*(?:brasileiro|brasileira|solteiro|solteira|casado|casada|divorciado|divorciada|viúvo|viúva|portador|inscrit))/i);
+    if (nomeMatch) {
+      nome = nomeMatch[1].trim();
+    }
+  }
+  if (!nome) {
+    nome = findMatch(t, [
+      /PROPRIET[AÁ]RIOS?:?\s*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
+      /(?:adquirentes?|outorgad[oa]s?)[:\s]*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
+    ]);
   }
 
-  // RG - find all RGs
-  const rgPattern = /(?:RG|R\.G\.|cédula de identidade)[:\s]*(?:n[ºo°]?\s*)?([0-9][0-9.\-\/]+[0-9])/gi;
-  const rgs: string[] = [];
-  let rgMatch;
-  while ((rgMatch = rgPattern.exec(t)) !== null) {
-    rgs.push(rgMatch[1]);
+  // ── Cônjuge ──
+  let nomeConjuge = '';
+  if (propText) {
+    const conjugeMatch = propText.match(/(?:su[ao]\s+(?:mulher|esposa?|marido|companheira?|companheiro))\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s*casad)/i);
+    if (conjugeMatch) {
+      nomeConjuge = conjugeMatch[1].trim();
+    }
+  }
+  if (!nomeConjuge) {
+    nomeConjuge = findMatch(t, [
+      /casad[oa]s?\s+(?:(?:sob\s+o\s+|pelo\s+)?regime\s+.+?\s+com|com)\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
+    ]);
   }
 
-  // Nome - typically appears before nationality or CPF
-  const nome = findMatch(t, [
-    /(?:propriet[aá]ri[oa]s?)[:\s]*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
-    /(?:adquirentes?|outorgad[oa]s?)[:\s]*([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
-    /(?:em\s+(?:favor|nome)\s+de)\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
-  ]);
+  // ── Estado civil ──
+  const estadoCivil = findMatch(propText || t, [
+    /(casad[oa]s?|solteir[oa]|divorciad[oa]|viúv[oa]|separad[oa]|uni[aã]o\s*est[aá]vel)/i,
+  ]).toLowerCase().replace(/s$/, ''); // normalize "casados" -> "casado"
 
-  // Estado civil
-  const estadoCivil = findMatch(t, [
-    /(casad[oa]|solteir[oa]|divorciad[oa]|viúv[oa]|separad[oa]|uni[aã]o est[aá]vel)/i,
-  ]).toLowerCase();
-
-  // Nacionalidade
-  const nacionalidade = findMatch(t, [
+  // ── Nacionalidade ──
+  const nacionalidade = findMatch(propText || t, [
+    /(?:ele|ela)?,?\s*(brasileir[oa])/i,
     /(brasileir[oa]|estrangeir[oa]|português|portuguesa)/i,
   ]).toLowerCase();
 
-  // Profissão
-  const profissao = findMatch(t, [
-    /(?:profiss[aã]o|profissional)[:\s]*([^,;]+?)(?:,|;|\s+portador|\s+inscrit|\s+residente)/i,
-    new RegExp(`(?:${estadoCivil || 'casad[oa]'})[,\\s]+([^,;]+?)(?:,|;|\\s+portador|\\s+inscrit|\\s+residente)`, 'i'),
+  // ── Profissão ── (after nationality or estado civil, before "portador")
+  let profissao = '';
+  if (propText) {
+    const profMatch = propText.match(/(?:brasileir[oa]|nacionalidade\s+\w+),?\s+([a-záàâãéêíóôõúüç][a-záàâãéêíóôõúüç\s]+?)(?:,|\s+portador|\s+inscrit|\s+residente)/i);
+    if (profMatch) profissao = profMatch[1].trim();
+  }
+  if (!profissao) {
+    profissao = findMatch(propText || t, [
+      /(?:profiss[aã]o|profissional)[:\s]*([^,;]+?)(?:,|;|\s+portador|\s+inscrit|\s+residente)/i,
+    ]);
+  }
+
+  // ── CPF - find all (supports CPF/MF, CPF, C.P.F.) ──
+  const cpfs = findAllMatches(t, /(?:CPF|C\.P\.F|CPF\/MF)\s*(?:sob\s+)?(?:n[ºo°.]?\s*)?(\d{3}[.\s]?\d{3}[.\s]?\d{3}[-.\s]?\d{2})/gi);
+
+  // ── RG / C.R.C. / Cédula / CI ──
+  const rgs = findAllMatches(t, /(?:RG|R\.G\.|C\.R\.C\.|C\.I\.|cédula\s+de\s+identidade|carteira\s+de\s+identidade)\s*(?:n[ºo°.]?\s*)?([0-9][0-9.\-\/\s]+[0-9])(?:\s*[-–]\s*[A-Z]{2})?/gi);
+
+  // ── Endereço / Domicílio ──
+  const endereco = findMatch(propText || t, [
+    /(?:residente|domiciliad)[oa]s?\s*(?:e\s+domiciliad[oa]s?)?\s*(?:,?\s*em|,?\s*na?[oa]?\s+)(.+?)(?:[-–]\s*[A-Z]{2}|,\s*(?:CEP|nesta|Estado)|\.\s)/i,
   ]);
 
-  // Endereço
-  const endereco = findMatch(t, [
-    /(?:residente|domiciliad[oa]|morador)[:\s]*(?:e domiciliad[oa])?\s*(?:na?[oa]?\s*)?(.+?)(?:,\s*(?:na cidade|no munic|CEP|nesta))/i,
+  // ── Município do proprietário (residência) ──
+  const cidade = findMatch(propText || t, [
+    /(?:residente|domiciliad)[oa]s?.*?(?:em|na?)\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-záàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:\s*[-–]\s*[A-Z]{2})/i,
   ]);
 
-  // Município/Cidade
-  const cidade = findMatch(t, [
-    /(?:cidade|munic[ií]pio)\s+(?:de\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][a-záàâãéêíóôõúüç\s]+?)(?:\s*[-/]\s*[A-Z]{2}|,)/i,
+  // ── UF ──
+  const uf = findMatch(propText || t, [
+    /(?:residente|domiciliad).*?[-–]\s*([A-Z]{2})/i,
+    /Estado\s+(?:do?\s+)?(?:Paran[aá]|[A-Z][a-z]+)\s*[-–]?\s*([A-Z]{2})/i,
   ]);
 
-  // UF
-  const uf = findMatch(t, [
-    /(?:estado\s+(?:do?\s+)?|[-\/]\s*)([A-Z]{2})(?:\s|,|\.)/,
-    /([A-Z]{2})(?:\s*,?\s*(?:CEP|Brasil))/,
+  // ── Seção IMÓVEL ──
+  const imovelSection = t.match(/IM[OÓ]VEL\s+RURAL:?\s*(.*?)(?:PROPRIET[AÁ]RIOS?|$)/is);
+  const imovelText = imovelSection ? imovelSection[1] : t;
+
+  // ── Denominação do imóvel ──
+  const denominacao = findMatch(imovelText, [
+    /(?:Lote\s+n[.ºo°]?\s*\d+.*?(?:do\s+)?(?:Im[oó]vel|Gleba))\s+([^,]+?)(?:,\s+no\s+Munic)/i,
+    /(?:denominad[oa])\s+[""]?([^""",;]+?)[""]?(?:,|\s+com\s+[aá]rea|\s+situad)/i,
+    /(?:Im[oó]vel)\s+([^,]+?)(?:,\s+no\s+Munic)/i,
+    /(?:Lote|Gleba|Fazenda|S[ií]tio|Ch[aá]cara)\s+(.+?)(?:,\s+(?:no|com)\s)/i,
   ]);
 
-  // Comarca
-  const comarca = findMatch(t, [
-    /comarca\s+(?:de\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][a-záàâãéêíóôõúüç\s]+?)(?:\s*[-/]\s*[A-Z]{2}|,|\.|$)/i,
+  // ── Município do imóvel ──
+  const municipioImovel = findMatch(imovelText, [
+    /Munic[ií]pio\s+(?:de\s+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-záàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:\s*[-–]\s*[A-Z]{2})/i,
+    /(?:situad[oa]|localizad[oa])\s+.*?(?:Munic[ií]pio\s+(?:de\s+)?)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-Za-záàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:\s*[-–]\s*[A-Z]{2})/i,
   ]);
 
-  // Denominação do imóvel
-  const denominacao = findMatch(t, [
-    /(?:denominad[oa]|im[oó]vel)\s+(?:rural\s+)?(?:denominad[oa]\s+)?[""]?([^""",;]+?)[""]?(?:,|\s+com\s+[aá]rea|\s+situad|\s+matriculad)/i,
-    /(?:lote|gleba|fazenda|s[ií]tio|ch[aá]cara)\s+([^,;]+?)(?:,|\s+com\s+[aá]rea|\s+situad|\s+matriculad)/i,
+  // ── Área ──
+  const area = findMatch(imovelText || t, [
+    /[aá]rea\s+(?:total\s+)?(?:de\s+)?\*?\*?([\d.,]+\s*m[²2])\*?\*?/i,
+    /([\d.,]+\s*m[²2])/i,
+    /[aá]rea\s+(?:total\s+)?(?:de\s+)?([\d.,]+\s*(?:ha|hectares?))/i,
   ]);
 
-  // Área
-  const area = findMatch(t, [
-    /[aá]rea\s+(?:total\s+)?(?:de\s+)?([\d.,]+\s*(?:m[²2]|ha|hectares?|alqueires?))/i,
-    /([\d.,]+)\s*(?:m[²2]|ha|hectares?)/i,
-  ]);
-
-  // Registro
+  // ── Registro (R-XX) ──
   const registro = findMatch(t, [
-    /R[.-]?\s*(\d+)[\s-]*(?:matr|mat)/i,
+    /R[.-]?\s*(\d+)[\s-]*(?:matr|mat|[-–])/i,
     /registro\s*(?:n[ºo°]?\s*)?(\d+)/i,
+    /REGISTRO\s*\*?\*?([\d.]+)\*?\*?/i,
   ]);
 
-  // Livro
+  // ── Livro ──
   const livro = findMatch(t, [
-    /livro\s*(?:n[ºo°]?\s*)?(\d+[-\w]*)/i,
+    /[Ll]ivro\s*(?:n[ºo°]?\s*)?(\d+[-\w]*)/i,
   ]);
 
-  // Cônjuge - find the name after "casado(a) com"
-  const nomeConjuge = findMatch(t, [
-    /casad[oa]\s+(?:(?:sob o )?regime .+? com|com)\s+([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ\s]+?)(?:,|\s+(?:brasileiro|portador|inscrit|nascid))/i,
-  ]);
-
-  // Município do imóvel
-  const municipioImovel = findMatch(t, [
-    /(?:situad[oa]|localizad[oa])\s+(?:no?\s+)?(?:munic[ií]pio\s+(?:de\s+)?)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÜÇ][a-záàâãéêíóôõúüç\s]+?)(?:\s*[-/]\s*[A-Z]{2}|,)/i,
-  ]);
+  // ── Descrição completa do imóvel (para referência) ──
+  let descricaoImovel = '';
+  if (imovelSection) {
+    descricaoImovel = imovelSection[1].trim().substring(0, 500);
+  }
 
   const id = crypto.randomUUID();
   const label = `Matrícula ${numMatricula || '?'} - ${nome || fileName}`;
@@ -208,8 +243,8 @@ export function parseMatriculaText(text: string, fileName: string): Partial<Matr
     profissao,
     rg: rgs[0] || '',
     cpf: cpfs[0] || '',
-    endereco,
-    cidade: cidade || municipioImovel,
+    endereco: endereco || cidade || '',
+    cidade: cidade || municipioImovel || '',
     uf: uf || 'PR',
     nomeConjuge,
     cpfConjuge: cpfs[1] || '',
@@ -220,7 +255,7 @@ export function parseMatriculaText(text: string, fileName: string): Partial<Matr
     numeroMatricula: numMatricula,
     registro,
     comarca,
-    municipioImovel: municipioImovel || cidade,
+    municipioImovel: municipioImovel || cidade || '',
     area,
     livro: livro || '02',
     textoCompleto: text,

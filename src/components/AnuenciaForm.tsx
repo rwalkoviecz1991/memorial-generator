@@ -69,16 +69,30 @@ export function AnuenciaForm({ matriculaRefreshKey }: { matriculaRefreshKey?: nu
   };
 
   const handleMatriculaSelect = (m: MatriculaData) => {
+    const isCasado = m.estadoCivil?.toLowerCase().includes('casado') || m.estadoCivil?.toLowerCase().includes('união estável');
     setData(prev => ({
       ...prev,
       nome: m.nomeProprietario || prev.nome,
       nacionalidade: m.nacionalidade || prev.nacionalidade,
+      estadoCivil: m.estadoCivil || prev.estadoCivil,
+      uniaoEstavel: isCasado ? '' : 'o qual declara que não convive em união estável',
       cpf: m.cpf || prev.cpf,
       rg: m.rg || prev.rg,
       profissao: m.profissao || prev.profissao,
       cidade: m.cidade || prev.cidade,
       uf: m.uf || prev.uf,
       endereco: m.endereco || prev.endereco,
+      conjuge: isCasado ? {
+        ...prev.conjuge,
+        nome: m.nomeConjuge || prev.conjuge.nome,
+        cpf: m.cpfConjuge || prev.conjuge.cpf,
+        rg: m.rgConjuge || prev.conjuge.rg,
+        nacionalidade: m.nacionalidadeConjuge || prev.conjuge.nacionalidade,
+        profissao: m.profissaoConjuge || prev.conjuge.profissao,
+      } : prev.conjuge,
+      denominacaoConfrontante: m.denominacaoImovel || prev.denominacaoConfrontante,
+      matriculaConfrontante: m.numeroMatricula || prev.matriculaConfrontante,
+      registroConfrontante: m.registro || prev.registroConfrontante,
       denominacaoRetificando: m.denominacaoImovel || prev.denominacaoRetificando,
       matriculaRetificando: m.numeroMatricula || prev.matriculaRetificando,
       registroRetificando: m.registro || prev.registroRetificando,
